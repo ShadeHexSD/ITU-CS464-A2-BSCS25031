@@ -1,80 +1,39 @@
-# CS464 Assignment 01 · TAYYAB AHMED MINHAS · BSCS25031
+# CS464 Assignment 02 · Tayyab Ahmed Minhas · BSCS25031
 
-## Game 1 · Brawl Stars
+- **Video:** [paste unlisted YouTube or Google Drive link here]
+- **Input:** Unity Input System (`InputSystem.actions`, Move and Jump). I read input in `Update()` and move the Rigidbody in `FixedUpdate()`.
+- **Ground check:** `Physics.CheckSphere` at the Feet child, radius 0.19 m, and the mask only includes the Ground layer. A wire-sphere gizmo shows it.
+- **Camera:** `CameraFollow.cs` runs in `LateUpdate()` with `1 - e^(-sharpness × deltaTime)` smoothing, plus look-ahead based on the player's velocity. The player walks relative to the camera's flattened forward and right.
+- **Juice:** A landing squash on the Body mesh. It starts only after a real landing (more than 0.10 s in the air) and eases back to normal with `Ease.OutBack`. The collider never changes size.
 
-- **Store link:** https://play.google.com/store/apps/details?id=com.supercell.brawlstars
-- **Genre:** Multiplayer Action / Hero Shooter
-- **I played:** I've played this game before for more than 2 years. For the sake of this assignment, I played it for 40 more minutes.
+## Tuning
 
-<p>
-<img src="Docs/game1/1.jpeg" width="240">
-<img src="Docs/game1/2.jpeg" width="240">
-<img src="Docs/game1/3.jpeg" width="240">
-</p>
+| Setting | Value | Why this number |
+|---|---|---|
+| Speed | 5 m/s | Lecture 04's starting speed, and it felt fine. It also means the 0.10 s coyote window gives you 0.5 m past a ledge. |
+| Jump height | 1.8 m | I set the jump in metres so it's easy to reason about, instead of guessing a force. |
+| Time to apex | 0.606 s | Follows from 1.8 m and gravity 9.81. Unity's fixed steps make the real number a touch different. |
+| Fall multiplier | 2.2× | Extra gravity only on the way down, so the jump peaks at the same height but you land sooner and it feels less floaty. |
+| Coyote time | 0.10 s | Lets you still jump just after running off an edge. At 5 m/s that's up to 0.5 m. |
+| Jump buffer | 0.12 s | If you press jump a little too early before landing, it still counts instead of getting lost. |
+| Camera smoothing | sharpness 5 | Same follow feel at any frame rate, unlike a constant Lerp factor. Used in every level. |
+| Look-ahead | L1 0.35 s, L2 0.15 s, L3 0.15 s, L4 0.10 s | The camera aims slightly ahead of where you're going. Big open maze gets more (1.75 m at 5 m/s), tighter levels get less so the camera doesn't swing around (0.75 m, 0.75 m, 0.5 m). |
 
-1. [M1, M2, M3] · Shows active combat where Brawlers manage limited attack ammunition, deal damage to charge their Super, and use their Brawler's unique attack range and abilities.
+## Four answers
 
-2. [M1, M2, M3] · Shows team combat and positioning around walls and bushes, where players manage ammunition, charge their Super through combat, and use their Brawler's abilities according to the map layout.
+1. **The jump, in numbers.** With a 1.8 m jump and gravity 9.81, launch speed is √(2 × 9.81 × 1.8) ≈ 5.94 m/s. With a 1 kg Rigidbody, that's an impulse of about 5.94 N·s. It takes about 0.606 s to reach the top. Falling back down with the 2.2× multiplier takes about 0.408 s. So one jump at 5 m/s carries me roughly 5 × (0.606 + 0.408) ≈ 5.07 m on flat ground. That's well past the 3 m gaps from Lecture 03, so it clears them comfortably.
 
-3. [M1, M2, M3, M7] · Shows an active team fight where the player manages attacks and Super charge while also having access to a Gadget as an additional ability during combat.
+2. **Update and FixedUpdate.** In `Update()` I read Move and Jump, work out the camera-relative direction, check the ground, track the coyote and buffer timers, and queue a jump. In `FixedUpdate()` I set the horizontal velocity (keeping Y), fire the queued jump once, and add the extra fall gravity. If I read the jump press in `FixedUpdate()` I'd miss presses, because a button press only lasts one frame and not every frame has a physics step. If I moved the physics into `Update()`, movement would depend on frame rate. Also, velocity is already in m/s, so I don't multiply it by `deltaTime`.
 
-| # | Mechanic | Dynamic | Aesthetic | Bartle type |
-|---|---|---|---|---|
-| M1 | Each Brawler has limited attack ammunition that automatically reloads over time. | Players conserve their shots and may retreat while reloading instead of continuously attacking. | **Challenge:** Managing ammunition and timing attacks makes combat more skill-based. | Killer |
-| M2 | Dealing damage charges a Brawler's Super [ Super is basically a brawle's ultimate power], which provides a more powerful special ability. | Players look for opportunities to deal damage to charge their Super and save it for important fights or objectives. | **Challenge:** Players must decide when using their powerful Super will have the greatest impact. | Killer |
-| M3 | Different Brawlers have different attacks, ranges, health values and abilities. | Players change their positioning and fighting style depending on the Brawler they are using and the opponents they face. | **Expression:** Different Brawlers allow players to choose and develop a preferred playstyle. | Killer |
-| M4 | In Gem Grab, teams collect Gems from the center and must hold enough of them [ Atleast 10 ] until the winning countdown finishes. | Teams compete for control of the center [ Because gems are spawned in the center of the map ] and protect teammates carrying many Gems instead of only chasing eliminations. | **Fellowship:** Players cooperate and protect one another to complete the team objective. | Socializer |
-| M5 | In Showdown, eliminated players are removed and the objective is to be the last Brawler or team remaining. | Players avoid unfavorable fights, choose engagements carefully and sometimes wait for opponents to weaken each other. | **Challenge:** Survival requires careful positioning, combat skill and risk assessment. | Killer |
-| M6 | Power Cubes collected in Showdown increase a Brawler's health and attack damage for that match. | Players compete for Power Cubes and decide whether gaining additional power is worth risking an encounter with another player. | **Challenge:** Collecting more power creates a risk-versus-reward decision. | Achiever |
-| M7 | Gadgets give Brawlers additional abilities that can be activated during battle and operate with cooldowns. | Players save their Gadget for useful situations and time its activation instead of using it whenever it becomes available. | **Challenge:** Correctly timing an additional ability can change the outcome of a fight. | Killer |
+3. **Vector3.Dot.** My ground check uses `CheckSphere`, so I don't use Dot right now. If I switched to contact normals I'd write `float d = Vector3.Dot(contact.normal, Vector3.up); bool ground = d > 0.5f;`. Near +1 means a flat floor, 0 means a wall, and negative means something facing down like a ceiling. The 0.5 threshold stops walls from counting as ground.
 
-**Aesthetic profile:** Brawl Stars primarily emphasizes **Challenge, Fellowship and Expression**. Challenge comes from managing ammunition, timing abilities, surviving fights and making risk-versus-reward decisions (M1, M2, M5, M6 and M7). Fellowship appears strongly in team-based modes such as Gem Grab, Brawl Ball where teammates cooperate to control objectives and protect one another (M4). Expression comes from the different Brawlers and playstyles available to the player (M3).
+4. **The juice.** It's a landing squash using `Ease.OutBack` with `Vector3.LerpUnclamped`, so it overshoots a little before settling. It lasts 0.18 s, which is about 11 frames at 60 fps (10.8). Short enough to not get in the way, long enough to actually see. The Body squashes to 0.70 on Y and about 1.195 on X and Z (1/√0.70) so it keeps roughly the same volume, then snaps exactly back to its original scale. Only the mesh changes, never the Rigidbody or collider.
 
-**Player types**
-- **Primary: Killer (Acting × Players),** because much of the core gameplay involves directly affecting opposing players through attacks, Supers and eliminations (M1, M2, M3, M5 and M7).
-- **Secondary: Achiever (Acting × World),** because players also work with the game's systems to become stronger and improve their performance, such as collecting Power Cubes and mastering different gameplay mechanics (M6).
+## Levels
 
-## Game 2 · Plants vs. Zombies 2
-
-- **Store link:** https://play.google.com/store/apps/details?id=com.ea.game.pvz2_row
-- **Genre:** Tower Defense / Strategy
-- **I played:** I've played this game before casually. For the sake of this assignment, I played it for 40 more minutes.
-
-<p>
-<img src="Docs/game2/1.jpeg" width="240">
-<img src="Docs/game2/2.jpeg" width="240">
-<img src="Docs/game2/3.jpeg" width="240">
-</p>
-
-1. [M1, M2, M3, M4] · Shows an active level where sun is managed to place different plants across lanes, including Sunflowers for resource production and defensive plants with different roles.
-
-2. [M7] · Shows the world map and level progression, where the player selects the next stage to continue progressing through the game.
-
-3. [M1, M2, M4, M5] · Shows an active battle where different plants are positioned across lanes to defend against approaching zombies with different properties and threats.
-
-| # | Mechanic | Dynamic | Aesthetic | Bartle type |
-|---|---|---|---|---|
-| M1 | Sun is a resource used to place plants, and different plants require different amounts of sun. | Players decide whether to spend sun immediately on defense or save it for more expensive plants. | **Challenge:** Limited resources force players to prioritize which plants they need and when to place them. | Achiever |
-| M2 | Plants are placed on tiles across different lanes while zombies advance through those lanes toward the player's house. | Players concentrate their defenses in lanes according to where zombies are approaching. | **Challenge:** Correct positioning is necessary to prevent zombies from breaking through the player's defenses. | Achiever |
-| M3 | Sunflowers periodically produce additional sun after being planted. | Players invest in Sunflowers early to build their sun economy while balancing the need for immediate defensive plants. | **Challenge:** Players balance short-term survival against building a stronger resource economy for later waves. | Achiever |
-| M4 | Different plants perform different roles, such as producing sun, attacking zombies, blocking them or dealing damage to groups. | Players combine plants with complementary abilities rather than relying on only one type of plant. | **Expression:** Different plant combinations allow players to create their own defensive strategies. | Achiever |
-| M5 | Different zombie types have different abilities and properties that can make certain defenses more or less effective. | Players identify dangerous zombie types and adapt their plant selection and placement to counter them. | **Discovery:** Encountering new zombies encourages players to learn how they behave and discover effective counters. | Explorer |
-| M6 | Plant Food can be collected and used on a plant to temporarily activate a powerful special effect. | Players often save Plant Food for large waves or emergencies and choose which plant will benefit most from it. | **Challenge:** A limited powerful resource makes choosing the correct plant and timing important. | Achiever |
-| M7 | Before many levels, players select a limited set of plants to use during the battle. | Players consider the expected zombies and choose a combination of plants that they believe can handle the level. | **Expression:** Plant selection lets players develop different strategies and approaches to the same challenge. | Achiever |
-
-**Aesthetic profile:** Plants vs. Zombies 2 primarily emphasizes **Challenge, Discovery and Expression**. Challenge comes from managing sun, positioning plants and deciding when to use limited resources such as Plant Food (M1, M2, M3 and M6). Discovery comes from encountering different zombies and learning how their abilities interact with the player's defenses (M5). Expression comes from selecting and combining plants to create different defensive strategies (M4 and M7).
-
-**Player types**
-- **Primary: Achiever (Acting × World),** because players manipulate the game's systems by managing resources, placing plants and building defenses to overcome each level (M1, M2, M3, M4, M6 and M7).
-- **Secondary: Explorer (Interacting × World),** because players encounter different zombie types and learn their behavior, strengths and counters as they progress (M5).
-
-
-## Level blockouts
-
-| Level | Screenshot | Its idea | Wayfinding tool |
-|---|---|---|---|
-| Level01 | <img src="Docs/levels/level01.png" width="320"> | The Idea here is you have to find the key to open the door to the goal. | Wayfinding tools is basically look for coins, followings coins lead to finding key to the door |
-| Level02 | <img src="Docs/levels/level02.png" width="320"> | The idea here is a small shooting range for practice, kill all the moving targets within a given time otherwise killed enemies respawn. Killing the enemies within given time leads to obstacles being removed so now the player can run to the goal| Way finding mechanism is you're given a gun upon start of the round so you'd know you have to kill the moving targets, later a text box would also appear explaining killing enemies in given time removed obstacles and opens door to goal.|
-| Level03 | <img src="Docs/levels/level03.png" width="320"> | The Idea here is to complete small puzzles to complete 2 doorway area through goaling a football, pressing buttons to open door and collecting coins to complete the level| The key indicator are pretty straight forward everyone knows there is a ball and a goal so they would naturally try to goal this woudl open the door then there is combination of small tasks that we usually do forcing player to use their brain, it's something that is copied from mini-games like human fall flat or fall guyz. |
-| Level04 | <img src="Docs/levels/level04.png" width="320"> | The idea here is a small spike plant, basically something you do in csgo or valorant. You pick a spike and plant it in a site, then you defend it. | Wayfinding here is subjective, not a clear goal by just looking at the game, you'd be prompted to do stuff like a tutorial through captions this would be done in coding part of the game. |
-| Level05 | <img src="Docs/levels/level05.png" width="320"> | | |
+| Level | What the controller must do there | What I changed for this jump |
+|---|---|---|
+| Level01 | Get through the coin-and-key maze without catching on walls and reach the exit. | Same 5 m/s and 1.8 m jump. Camera offset (0, 20, -11) and look-ahead 0.35 s so you can see more of the maze. |
+| Level02 | Weave around the shooting-range targets and barriers to the goal. | Same Player prefab. Camera offset (0, 8, -11) and look-ahead 0.15 s so it doesn't swing when you change direction. |
+| Level03 | Handle the football, switches, doors and platform areas. | Same jump. Camera offset (0, 7, -6) and look-ahead 0.15 s for closer navigation. |
+| Level04 | Get past cover and up the stairs to the spike-planting area. | Same Player prefab. Camera offset (0, 6, 5) and look-ahead 0.10 s for the tighter layout. |
