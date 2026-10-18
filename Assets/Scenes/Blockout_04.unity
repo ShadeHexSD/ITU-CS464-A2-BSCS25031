@@ -754,6 +754,10 @@ PrefabInstance:
       propertyPath: offset.z
       value: 5
       objectReference: {fileID: 0}
+    - target: {fileID: 7104280624291345329, guid: 9312e61f0ed3e8f4683c7250cba82b10, type: 3}
+      propertyPath: lookAhead
+      value: 0.1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

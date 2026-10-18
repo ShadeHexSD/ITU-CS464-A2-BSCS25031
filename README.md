@@ -1,6 +1,6 @@
 # CS464 Assignment 02 · Tayyab Ahmed Minhas · BSCS25031
 
-- **Video:** [paste unlisted YouTube or Google Drive link here]
+- **Video:** [(https://youtu.be/RweQYPqX5is)]
 - **Input:** Unity Input System (`InputSystem.actions`, Move and Jump). I read input in `Update()` and move the Rigidbody in `FixedUpdate()`.
 - **Ground check:** `Physics.CheckSphere` at the Feet child, radius 0.19 m, and the mask only includes the Ground layer. A wire-sphere gizmo shows it.
 - **Camera:** `CameraFollow.cs` runs in `LateUpdate()` with `1 - e^(-sharpness × deltaTime)` smoothing, plus look-ahead based on the player's velocity. The player walks relative to the camera's flattened forward and right.
